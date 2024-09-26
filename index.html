@@ -16,7 +16,7 @@
             font-size: 16px;
             margin-right: 10px;
         }
-        #status, #result {
+        #status, #result, #progress {
             margin-bottom: 20px;
         }
     </style>
@@ -25,6 +25,7 @@
     <h1>Batch EXIF Editor</h1>
     <div id="status">选择的文件数: 0</div>
     <div id="result">状态: 等待选择文件</div>
+    <div id="progress"></div>
     <input type="file" id="fileInput" multiple accept="image/jpeg,image/png" style="display: none;">
     <button onclick="document.getElementById('fileInput').click()">选择照片</button>
     <button onclick="processImages()">处理</button>
@@ -47,29 +48,43 @@
             }
 
             document.getElementById('result').textContent = '状态：正在处理...';
+            document.getElementById('progress').textContent = '';
 
             let processed = 0;
             let failed = 0;
             const zip = new JSZip();
+            const batchSize = 10; // 每批处理的文件数
 
-            for (const file of selectedFiles) {
-                try {
-                    const result = await processImage(file);
-                    zip.file(result.fileName, result.content.split(',')[1], {base64: true});
-                    processed++;
-                } catch (error) {
-                    console.error('处理文件时出错:', error);
-                    failed++;
-                }
+            for (let i = 0; i < selectedFiles.length; i += batchSize) {
+                const batch = selectedFiles.slice(i, i + batchSize);
+                await Promise.all(batch.map(async (file) => {
+                    try {
+                        const result = await processImage(file);
+                        zip.file(result.fileName, result.content.split(',')[1], {base64: true});
+                        processed++;
+                    } catch (error) {
+                        console.error('处理文件时出错:', error);
+                        failed++;
+                    }
+                    updateProgress(processed, failed, selectedFiles.length);
+                }));
             }
 
             document.getElementById('result').textContent = `状态：正在生成ZIP文件...`;
 
-            zip.generateAsync({type:"blob"})
-            .then(function(content) {
+            try {
+                const content = await zip.generateAsync({type:"blob"});
                 saveAs(content, "modified_images.zip");
                 document.getElementById('result').textContent = `状态：完成。成功处理: ${processed}, 失败: ${failed}`;
-            });
+            } catch (error) {
+                console.error('生成ZIP文件时出错:', error);
+                document.getElementById('result').textContent = `状态：生成ZIP文件失败。请尝试减少文件数量或刷新页面重试。`;
+            }
+        }
+
+        function updateProgress(processed, failed, total) {
+            const progress = ((processed + failed) / total * 100).toFixed(2);
+            document.getElementById('progress').textContent = `进度: ${progress}% (成功: ${processed}, 失败: ${failed})`;
         }
 
         function processImage(file) {
@@ -88,7 +103,7 @@
                         const isoValue = Math.floor(Math.random() * 19) * 25 + 50;
                         const exposureTime = (Math.floor(Math.random() * 231) + 125) / 10000;
                         
-                        // 新增：随机选择焦距和对应的光圈值
+                        // 修复：确保焦距只能是26mm或70mm
                         const focalLength = Math.random() < 0.5 ? 26 : 70;
                         const fNumber = focalLength === 26 ? 1.8 : 2.4;
 
@@ -102,7 +117,7 @@
                             exifObj["Exif"][piexif.ExifIFD.ISOSpeedRatings] = isoValue;
                             exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [exposureTime * 10000, 10000];
                             
-                            // 新增：设置焦距、光圈和曝光补偿
+                            // 设置焦距、光圈和曝光补偿
                             exifObj["Exif"][piexif.ExifIFD.FocalLength] = [focalLength * 10, 10];
                             exifObj["Exif"][piexif.ExifIFD.FNumber] = [fNumber * 10, 10];
                             exifObj["Exif"][piexif.ExifIFD.ExposureBiasValue] = [0, 100]; // 0.00 EV
