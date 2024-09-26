@@ -111,18 +111,18 @@
         function generateUniqueRandomDates(count) {
             const dates = [];
             const now = new Date();
-            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+            const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
 
-            const totalMillisecondsInDay = endOfDay - startOfDay;
+            const totalMillisecondsInPast24Hours = now.getTime() - past24Hours.getTime();
 
             const usedTimes = new Set();
 
             while (dates.length < count) {
-                const randomTime = Math.floor(Math.random() * totalMillisecondsInDay);
-                if (!usedTimes.has(randomTime)) {
+                const randomTimeOffset = Math.floor(Math.random() * totalMillisecondsInPast24Hours);
+                const randomTime = past24Hours.getTime() + randomTimeOffset;
+                if (randomTime <= now.getTime() && !usedTimes.has(randomTime)) {
                     usedTimes.add(randomTime);
-                    const randomDate = new Date(startOfDay.getTime() + randomTime);
+                    const randomDate = new Date(randomTime);
                     dates.push(randomDate);
                 }
             }
