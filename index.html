@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Batch EXIF Editor</title>
     <style>
         body {
@@ -57,11 +56,15 @@
             const zip = new JSZip();
             const batchSize = 10; // 每批处理的文件数
 
+            // 生成不重复的随机时间数组
+            const uniqueDates = generateUniqueRandomDates(selectedFiles.length);
+
             for (let i = 0; i < selectedFiles.length; i += batchSize) {
                 const batch = selectedFiles.slice(i, i + batchSize);
-                await Promise.all(batch.map(async (file) => {
+                await Promise.all(batch.map(async (file, index) => {
                     try {
-                        const result = await processImage(file);
+                        const randomDate = uniqueDates[i + index]; // 获取不重复的随机时间
+                        const result = await processImage(file, randomDate);
                         zip.file(result.fileName, result.content.split(',')[1], {base64: true});
                         processed++;
                     } catch (error) {
@@ -75,21 +78,25 @@
             document.getElementById('result').textContent = `状态：正在生成ZIP文件...`;
 
             try {
-                const content = await zip.generateAsync({type:"blob"});
-                const blobUrl = URL.createObjectURL(content);
+                if (processed > 0) { // 仅在有成功处理的文件时生成ZIP
+                    const content = await zip.generateAsync({type:"blob"});
+                    const blobUrl = URL.createObjectURL(content);
 
-                // 创建一个下载链接
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.download = "modified_images.zip";
-                link.textContent = "点击这里下载ZIP文件";
+                    // 创建一个下载链接
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = "modified_images.zip";
+                    link.textContent = "点击这里下载ZIP文件";
 
-                // 将链接添加到页面
-                const downloadLinkDiv = document.getElementById('downloadLink');
-                downloadLinkDiv.innerHTML = '';
-                downloadLinkDiv.appendChild(link);
+                    // 将链接添加到页面
+                    const downloadLinkDiv = document.getElementById('downloadLink');
+                    downloadLinkDiv.innerHTML = '';
+                    downloadLinkDiv.appendChild(link);
 
-                document.getElementById('result').textContent = `状态：完成。成功处理: ${processed}, 失败: ${failed}`;
+                    document.getElementById('result').textContent = `状态：完成。成功处理: ${processed}, 失败: ${failed}`;
+                } else {
+                    document.getElementById('result').textContent = `状态：所有文件处理失败，请检查文件格式。`;
+                }
             } catch (error) {
                 console.error('生成ZIP文件时出错:', error);
                 document.getElementById('result').textContent = `状态：生成ZIP文件失败。请尝试减少文件数量或刷新页面重试。`;
@@ -101,7 +108,29 @@
             document.getElementById('progress').textContent = `进度: ${progress}% (成功: ${processed}, 失败: ${failed})`;
         }
 
-        function processImage(file) {
+        function generateUniqueRandomDates(count) {
+            const dates = [];
+            const now = new Date();
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+            const totalMillisecondsInDay = endOfDay - startOfDay;
+
+            const usedTimes = new Set();
+
+            while (dates.length < count) {
+                const randomTime = Math.floor(Math.random() * totalMillisecondsInDay);
+                if (!usedTimes.has(randomTime)) {
+                    usedTimes.add(randomTime);
+                    const randomDate = new Date(startOfDay.getTime() + randomTime);
+                    dates.push(randomDate);
+                }
+            }
+
+            return dates;
+        }
+
+        function processImage(file, randomDate) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -110,10 +139,6 @@
                         let newFileName = '';
                         let newFileContent = e.target.result;
 
-                        // 生成随机数据
-                        const now = new Date();
-                        const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
-                        const randomDate = new Date(twoDaysAgo.getTime() + Math.random() * (now.getTime() - twoDaysAgo.getTime()));
                         const isoValue = Math.floor(Math.random() * 19) * 25 + 50;
                         const exposureTime = (Math.floor(Math.random() * 231) + 125) / 10000;
                         
@@ -127,7 +152,7 @@
                             // 修改EXIF数据
                             exifObj["0th"][piexif.ImageIFD.Model] = "SM-F9460";
                             exifObj["0th"][piexif.ImageIFD.Make] = "samsung";
-                            exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = randomDate.toISOString().replace(/[-T:]/g, ':').split('.')[0];
+                            exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = formatDate(randomDate);
                             exifObj["Exif"][piexif.ExifIFD.ISOSpeedRatings] = isoValue;
                             exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [Math.round(exposureTime * 1000000), 1000000];
                             
@@ -143,7 +168,9 @@
                             newFileName = `modified_${file.name}`;
                         } else if (fileType === 'image/png') {
                             // 对于PNG，我们将元数据添加到文件名中
-                            newFileName = `SM-F9460_samsung_${randomDate.toISOString().replace(/[-:]/g, '').split('T')[0]}_ISO${isoValue}_${focalLength}mm_f${fNumber}_${file.name}`;
+                            newFileName = `SM-F9460_samsung_${formatDateForFileName(randomDate)}_ISO${isoValue}_${focalLength}mm_f${fNumber}_${file.name}`;
+                        } else {
+                            throw new Error('不支持的文件类型');
                         }
 
                         resolve({fileName: newFileName, content: newFileContent});
@@ -151,8 +178,31 @@
                         reject(error);
                     }
                 };
+                reader.onerror = function() {
+                    reject(new Error('文件读取错误'));
+                };
                 reader.readAsDataURL(file);
             });
+        }
+
+        function formatDate(date) {
+            const yyyy = date.getFullYear();
+            const MM = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const HH = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            const ss = String(date.getSeconds()).padStart(2, '0');
+            return `${yyyy}:${MM}:${dd} ${HH}:${mm}:${ss}`;
+        }
+
+        function formatDateForFileName(date) {
+            const yyyy = date.getFullYear();
+            const MM = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const HH = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            const ss = String(date.getSeconds()).padStart(2, '0');
+            return `${yyyy}${MM}${dd}_${HH}${mm}${ss}`;
         }
     </script>
 </body>
