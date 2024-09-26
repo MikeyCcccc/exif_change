@@ -129,12 +129,13 @@
                             exifObj["0th"][piexif.ImageIFD.Make] = "samsung";
                             exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = randomDate.toISOString().replace(/[-T:]/g, ':').split('.')[0];
                             exifObj["Exif"][piexif.ExifIFD.ISOSpeedRatings] = isoValue;
-                            exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [exposureTime * 10000, 10000];
+                            exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [Math.round(exposureTime * 1000000), 1000000];
                             
                             // 设置焦距、光圈和曝光补偿
-                            exifObj["Exif"][piexif.ExifIFD.FocalLength] = [focalLength * 10, 10];
-                            exifObj["Exif"][piexif.ExifIFD.FNumber] = [fNumber * 10, 10];
+                            exifObj["Exif"][piexif.ExifIFD.FocalLength] = [focalLength, 1];
+                            exifObj["Exif"][piexif.ExifIFD.FNumber] = [Math.round(fNumber * 10), 10];
                             exifObj["Exif"][piexif.ExifIFD.ExposureBiasValue] = [0, 100]; // 0.00 EV
+                            exifObj["Exif"][piexif.ExifIFD.FocalLengthIn35mmFilm] = focalLength;
 
                             // 将修改后的EXIF数据写回图像
                             const exifBytes = piexif.dump(exifObj);
