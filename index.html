@@ -30,6 +30,8 @@
     <button onclick="processImages()">处理</button>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script>
         let selectedFiles = [];
 
@@ -38,7 +40,7 @@
             document.getElementById('status').textContent = `选择的文件数: ${selectedFiles.length}`;
         });
 
-        function processImages() {
+        async function processImages() {
             if (selectedFiles.length === 0) {
                 alert('请先选择图片。');
                 return;
@@ -48,8 +50,30 @@
 
             let processed = 0;
             let failed = 0;
+            const zip = new JSZip();
 
-            selectedFiles.forEach((file) => {
+            for (const file of selectedFiles) {
+                try {
+                    const result = await processImage(file);
+                    zip.file(result.fileName, result.content.split(',')[1], {base64: true});
+                    processed++;
+                } catch (error) {
+                    console.error('处理文件时出错:', error);
+                    failed++;
+                }
+            }
+
+            document.getElementById('result').textContent = `状态：正在生成ZIP文件...`;
+
+            zip.generateAsync({type:"blob"})
+            .then(function(content) {
+                saveAs(content, "modified_images.zip");
+                document.getElementById('result').textContent = `状态：完成。成功处理: ${processed}, 失败: ${failed}`;
+            });
+        }
+
+        function processImage(file) {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     try {
@@ -84,20 +108,9 @@
                             newFileName = `SM-F9460_samsung_${randomDate.toISOString().replace(/[-:]/g, '').split('T')[0]}_ISO${isoValue}_${file.name}`;
                         }
 
-                        // 创建下载链接
-                        const downloadLink = document.createElement('a');
-                        downloadLink.href = newFileContent;
-                        downloadLink.download = newFileName;
-                        downloadLink.click();
-
-                        processed++;
+                        resolve({fileName: newFileName, content: newFileContent});
                     } catch (error) {
-                        console.error('处理文件时出错:', error);
-                        failed++;
-                    }
-
-                    if (processed + failed === selectedFiles.length) {
-                        document.getElementById('result').textContent = `状态：完成。成功处理: ${processed}, 失败: ${failed}`;
+                        reject(error);
                     }
                 };
                 reader.readAsDataURL(file);
