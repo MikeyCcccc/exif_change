@@ -87,6 +87,10 @@
                         const randomDate = new Date(twoDaysAgo.getTime() + Math.random() * (now.getTime() - twoDaysAgo.getTime()));
                         const isoValue = Math.floor(Math.random() * 19) * 25 + 50;
                         const exposureTime = (Math.floor(Math.random() * 231) + 125) / 10000;
+                        
+                        // 新增：随机选择焦距和对应的光圈值
+                        const focalLength = Math.random() < 0.5 ? 26 : 70;
+                        const fNumber = focalLength === 26 ? 1.8 : 2.4;
 
                         if (fileType === 'image/jpeg') {
                             let exifObj = piexif.load(e.target.result);
@@ -95,9 +99,13 @@
                             exifObj["0th"][piexif.ImageIFD.Model] = "SM-F9460";
                             exifObj["0th"][piexif.ImageIFD.Make] = "samsung";
                             exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = randomDate.toISOString().replace(/[-T:]/g, ':').split('.')[0];
-                            exifObj["Exif"][piexif.ExifIFD.ApertureValue] = [24, 10];
                             exifObj["Exif"][piexif.ExifIFD.ISOSpeedRatings] = isoValue;
                             exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [exposureTime * 10000, 10000];
+                            
+                            // 新增：设置焦距、光圈和曝光补偿
+                            exifObj["Exif"][piexif.ExifIFD.FocalLength] = [focalLength * 10, 10];
+                            exifObj["Exif"][piexif.ExifIFD.FNumber] = [fNumber * 10, 10];
+                            exifObj["Exif"][piexif.ExifIFD.ExposureBiasValue] = [0, 100]; // 0.00 EV
 
                             // 将修改后的EXIF数据写回图像
                             const exifBytes = piexif.dump(exifObj);
@@ -105,7 +113,7 @@
                             newFileName = `modified_${file.name}`;
                         } else if (fileType === 'image/png') {
                             // 对于PNG，我们将元数据添加到文件名中
-                            newFileName = `SM-F9460_samsung_${randomDate.toISOString().replace(/[-:]/g, '').split('T')[0]}_ISO${isoValue}_${file.name}`;
+                            newFileName = `SM-F9460_samsung_${randomDate.toISOString().replace(/[-:]/g, '').split('T')[0]}_ISO${isoValue}_${focalLength}mm_f${fNumber}_${file.name}`;
                         }
 
                         resolve({fileName: newFileName, content: newFileContent});
