@@ -56,14 +56,14 @@
             const zip = new JSZip();
             const batchSize = 10; // 每批处理的文件数
 
-            // 生成不重复的随机时间数组并打乱顺序
-            const uniqueDates = generateUniqueRandomDates(selectedFiles.length);
+            // 生成随机的拍摄时间数组，间隔在5到420分钟之间
+            const uniqueDates = generateRandomDatesWithIntervals(selectedFiles.length);
 
             for (let i = 0; i < selectedFiles.length; i += batchSize) {
                 const batch = selectedFiles.slice(i, i + batchSize);
                 await Promise.all(batch.map(async (file, index) => {
                     try {
-                        const randomDate = uniqueDates[i + index]; // 获取不重复的随机时间
+                        const randomDate = uniqueDates[i + index]; // 获取对应的随机时间
                         const result = await processImage(file, randomDate);
                         zip.file(result.fileName, result.content.split(',')[1], {base64: true});
                         processed++;
@@ -108,40 +108,47 @@
             document.getElementById('progress').textContent = `进度: ${progress}% (成功: ${processed}, 失败: ${failed})`;
         }
 
-        function generateUniqueRandomDates(count) {
+        function generateRandomDatesWithIntervals(count) {
             const dates = [];
             const now = new Date();
-            const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
+            const startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
 
-            const usedTimes = new Set();
+            // 生成随机间隔，单位为分钟
+            let intervals = [];
+            let totalInterval = 0;
+            for (let i = 0; i < count - 1; i++) {
+                let interval = Math.floor(Math.random() * (420 - 5 + 1)) + 5; // 随机间隔5-420分钟
+                intervals.push(interval);
+                totalInterval += interval;
+            }
 
-            while (dates.length < count) {
-                const randomTime = randomDateInRange(past24Hours, now);
-                const timeKey = randomTime.getTime();
-                if (!usedTimes.has(timeKey)) {
-                    usedTimes.add(timeKey);
-                    dates.push(randomTime);
+            // 如果总间隔超过1440分钟（24小时），按比例缩小间隔
+            if (totalInterval > 1440) {
+                const scalingFactor = 1440 / totalInterval;
+                totalInterval = 0;
+                for (let i = 0; i < intervals.length; i++) {
+                    intervals[i] = intervals[i] * scalingFactor;
+                    totalInterval += intervals[i];
                 }
             }
 
-            // 打乱日期数组顺序
-            shuffleArray(dates);
+            // 从当前时间开始，倒推每张照片的拍摄时间
+            let currentTime = now;
+            dates.push(new Date(currentTime)); // 第一张照片的时间是当前时间
+
+            for (let i = 0; i < intervals.length; i++) {
+                let interval = intervals[i];
+                currentTime = new Date(currentTime.getTime() - interval * 60 * 1000); // 减去间隔时间
+                if (currentTime < startTime) {
+                    currentTime = startTime;
+                }
+                dates.push(new Date(currentTime));
+            }
+
+            // 将日期数组反转，使得时间顺序随机
+            dates.reverse();
 
             return dates;
-        }
-
-        function randomDateInRange(start, end) {
-            const startMs = start.getTime();
-            const endMs = end.getTime();
-            const randomMs = startMs + Math.random() * (endMs - startMs);
-            return new Date(randomMs);
-        }
-
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
         }
 
         function processImage(file, randomDate) {
@@ -166,6 +173,11 @@
                             // 修改EXIF数据
                             exifObj["0th"][piexif.ImageIFD.Model] = "SM-F9460";
                             exifObj["0th"][piexif.ImageIFD.Make] = "samsung";
+                            exifObj["0th"][piexif.ImageIFD.Software] = "Photos 1.0"; // 可选，添加软件信息
+
+                            // 添加 ExifVersion 标签，值为 "0220"
+                            exifObj["Exif"][piexif.ExifIFD.ExifVersion] = [48, 50, 50, 48]; // ASCII "0220"
+
                             exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = formatDate(randomDate);
                             exifObj["Exif"][piexif.ExifIFD.ISOSpeedRatings] = isoValue;
                             exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [Math.round(exposureTime * 1000000), 1000000];
