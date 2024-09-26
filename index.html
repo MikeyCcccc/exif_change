@@ -56,14 +56,14 @@
             const zip = new JSZip();
             const batchSize = 10; // 每批处理的文件数
 
-            // 生成随机的拍摄时间数组，间隔在5到420分钟之间
-            const uniqueDates = generateRandomDatesWithIntervals(selectedFiles.length);
+            // 生成不重复的随机时间数组并打乱顺序
+            const uniqueDates = generateUniqueRandomDates(selectedFiles.length);
 
             for (let i = 0; i < selectedFiles.length; i += batchSize) {
                 const batch = selectedFiles.slice(i, i + batchSize);
                 await Promise.all(batch.map(async (file, index) => {
                     try {
-                        const randomDate = uniqueDates[i + index]; // 获取对应的随机时间
+                        const randomDate = uniqueDates[i + index]; // 获取不重复的随机时间
                         const result = await processImage(file, randomDate);
                         zip.file(result.fileName, result.content.split(',')[1], {base64: true});
                         processed++;
@@ -108,47 +108,40 @@
             document.getElementById('progress').textContent = `进度: ${progress}% (成功: ${processed}, 失败: ${failed})`;
         }
 
-        function generateRandomDatesWithIntervals(count) {
+        function generateUniqueRandomDates(count) {
             const dates = [];
             const now = new Date();
-            const startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
+            const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
 
-            // 生成随机间隔，单位为毫秒
-            let intervals = [];
-            let totalInterval = 0;
-            for (let i = 0; i < count - 1; i++) {
-                let interval = (Math.floor(Math.random() * (420 - 5 + 1)) + 5) * 60 * 1000; // 随机间隔5-420分钟
-                intervals.push(interval);
-                totalInterval += interval;
-            }
+            const usedTimes = new Set();
 
-            // 如果总间隔超过24小时，按比例缩小间隔
-            if (totalInterval > 24 * 60 * 60 * 1000) {
-                const scalingFactor = (24 * 60 * 60 * 1000) / totalInterval;
-                totalInterval = 0;
-                for (let i = 0; i < intervals.length; i++) {
-                    intervals[i] = intervals[i] * scalingFactor;
-                    totalInterval += intervals[i];
+            while (dates.length < count) {
+                const randomTime = randomDateInRange(past24Hours, now);
+                const timeKey = randomTime.getTime();
+                if (!usedTimes.has(timeKey)) {
+                    usedTimes.add(timeKey);
+                    dates.push(randomTime);
                 }
             }
 
-            // 从当前时间开始，倒推每张照片的拍摄时间
-            let currentTime = now.getTime();
-            dates.push(new Date(currentTime)); // 第一张照片的时间是当前时间
-
-            for (let i = 0; i < intervals.length; i++) {
-                let interval = intervals[i];
-                currentTime -= interval; // 减去间隔时间
-                if (currentTime < startTime.getTime()) {
-                    currentTime = startTime.getTime();
-                }
-                dates.push(new Date(currentTime));
-            }
-
-            // 将日期数组反转，使得时间顺序随机
-            dates.reverse();
+            // 打乱日期数组顺序
+            shuffleArray(dates);
 
             return dates;
+        }
+
+        function randomDateInRange(start, end) {
+            const startMs = start.getTime();
+            const endMs = end.getTime();
+            const randomMs = startMs + Math.random() * (endMs - startMs);
+            return new Date(randomMs);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
         }
 
         function processImage(file, randomDate) {
@@ -160,19 +153,12 @@
                         let newFileName = '';
                         let newFileContent = e.target.result;
 
-                        const isoValues = [50, 100, 200, 400, 800, 1600];
-                        const isoValue = isoValues[Math.floor(Math.random() * isoValues.length)];
-
-                        const exposureTimes = [
-                            [1, 8000], [1, 4000], [1, 2000], [1, 1000], [1, 500],
-                            [1, 250], [1, 125], [1, 60], [1, 30], [1, 15],
-                            [1, 8], [1, 4], [1, 2], [1, 1], [2, 1]
-                        ];
-                        const exposureTime = exposureTimes[Math.floor(Math.random() * exposureTimes.length)];
-
+                        const isoValue = Math.floor(Math.random() * 19) * 25 + 50;
+                        const exposureTime = (Math.floor(Math.random() * 231) + 125) / 10000;
+                        
                         // 确保焦距只能是26mm或70mm
                         const focalLength = Math.random() < 0.5 ? 26 : 70;
-                        const fNumber = focalLength === 26 ? [18, 10] : [24, 10]; // f/1.8 或 f/2.4
+                        const fNumber = focalLength === 26 ? 1.8 : 2.4;
 
                         if (fileType === 'image/jpeg') {
                             let exifObj = piexif.load(e.target.result);
@@ -180,21 +166,18 @@
                             // 修改EXIF数据
                             exifObj["0th"][piexif.ImageIFD.Model] = "SM-F9460";
                             exifObj["0th"][piexif.ImageIFD.Make] = "samsung";
-                            exifObj["Exif"][piexif.ExifIFD.ExifVersion] = [48, 50, 50, 48]; // ASCII "0220"
-
-                            const formattedDate = formatDate(randomDate);
-                            exifObj["0th"][piexif.ImageIFD.DateTime] = formattedDate;
-                            exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = formattedDate;
-                            exifObj["Exif"][piexif.ExifIFD.DateTimeDigitized] = formattedDate;
-
+                            exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = formatDate(randomDate);
                             exifObj["Exif"][piexif.ExifIFD.ISOSpeedRatings] = isoValue;
-                            exifObj["Exif"][piexif.ExifIFD.ExposureTime] = exposureTime;
-
+                            exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [Math.round(exposureTime * 1000000), 1000000];
+                            
                             // 设置焦距、光圈和曝光补偿
                             exifObj["Exif"][piexif.ExifIFD.FocalLength] = [focalLength, 1];
-                            exifObj["Exif"][piexif.ExifIFD.FNumber] = fNumber;
-                            exifObj["Exif"][piexif.ExifIFD.ExposureBiasValue] = [0, 1]; // 0.00 EV
+                            exifObj["Exif"][piexif.ExifIFD.FNumber] = [Math.round(fNumber * 10), 10];
+                            exifObj["Exif"][piexif.ExifIFD.ExposureBiasValue] = [0, 100]; // 0.00 EV
                             exifObj["Exif"][piexif.ExifIFD.FocalLengthIn35mmFilm] = focalLength;
+
+                            // 添加 ExifVersion 标签，值为 "0220"
+                            exifObj["Exif"][piexif.ExifIFD.ExifVersion] = [0x30, 0x32, 0x32, 0x30]; // "0220" 的 ASCII 码
 
                             // 将修改后的EXIF数据写回图像
                             const exifBytes = piexif.dump(exifObj);
@@ -202,7 +185,7 @@
                             newFileName = `modified_${file.name}`;
                         } else if (fileType === 'image/png') {
                             // 对于PNG，我们将元数据添加到文件名中
-                            newFileName = `SM-F9460_samsung_${formatDateForFileName(randomDate)}_ISO${isoValue}_${focalLength}mm_f${fNumber[0]/fNumber[1]}_${file.name}`;
+                            newFileName = `SM-F9460_samsung_${formatDateForFileName(randomDate)}_ISO${isoValue}_${focalLength}mm_f${fNumber}_${file.name}`;
                         } else {
                             throw new Error('不支持的文件类型');
                         }
