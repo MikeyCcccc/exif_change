@@ -38,7 +38,7 @@
 
         document.getElementById('fileInput').addEventListener('change', (event) => {
             selectedFiles = Array.from(event.target.files);
-            document.getElementById('status').textContent = `选择的文件数: ${selectedFiles.length}`;
+            document.getElementById('status').textContent = 选择的文件数: ${selectedFiles.length};
         });
 
         async function processImages() {
@@ -75,7 +75,7 @@
                 }));
             }
 
-            document.getElementById('result').textContent = `状态：正在生成ZIP文件...`;
+            document.getElementById('result').textContent = 状态：正在生成ZIP文件...;
 
             try {
                 if (processed > 0) { // 仅在有成功处理的文件时生成ZIP
@@ -93,19 +93,19 @@
                     downloadLinkDiv.innerHTML = '';
                     downloadLinkDiv.appendChild(link);
 
-                    document.getElementById('result').textContent = `状态：完成。成功处理: ${processed}, 失败: ${failed}`;
+                    document.getElementById('result').textContent = 状态：完成。成功处理: ${processed}, 失败: ${failed};
                 } else {
-                    document.getElementById('result').textContent = `状态：所有文件处理失败，请检查文件格式。`;
+                    document.getElementById('result').textContent = 状态：所有文件处理失败，请检查文件格式。;
                 }
             } catch (error) {
                 console.error('生成ZIP文件时出错:', error);
-                document.getElementById('result').textContent = `状态：生成ZIP文件失败。请尝试减少文件数量或刷新页面重试。`;
+                document.getElementById('result').textContent = 状态：生成ZIP文件失败。请尝试减少文件数量或刷新页面重试。;
             }
         }
 
         function updateProgress(processed, failed, total) {
             const progress = ((processed + failed) / total * 100).toFixed(2);
-            document.getElementById('progress').textContent = `进度: ${progress}% (成功: ${processed}, 失败: ${failed})`;
+            document.getElementById('progress').textContent = 进度: ${progress}% (成功: ${processed}, 失败: ${failed});
         }
 
         function generateUniqueRandomDates(count) {
@@ -156,7 +156,7 @@
                         const isoValue = Math.floor(Math.random() * 19) * 25 + 50;
                         const exposureTime = (Math.floor(Math.random() * 231) + 125) / 10000;
                         
-                        // 确保焦距只能是26mm或70mm
+                        // 修复：确保焦距只能是26mm或70mm
                         const focalLength = Math.random() < 0.5 ? 26 : 70;
                         const fNumber = focalLength === 26 ? 1.8 : 2.4;
 
@@ -176,16 +176,13 @@
                             exifObj["Exif"][piexif.ExifIFD.ExposureBiasValue] = [0, 100]; // 0.00 EV
                             exifObj["Exif"][piexif.ExifIFD.FocalLengthIn35mmFilm] = focalLength;
 
-                            // 添加 ExifVersion 标签，值为 "0220"
-                            exifObj["Exif"][piexif.ExifIFD.ExifVersion] = [0x30, 0x32, 0x32, 0x30]; // "0220" 的 ASCII 码
-
                             // 将修改后的EXIF数据写回图像
                             const exifBytes = piexif.dump(exifObj);
                             newFileContent = piexif.insert(exifBytes, e.target.result);
-                            newFileName = `modified_${file.name}`;
+                            newFileName = modified_${file.name};
                         } else if (fileType === 'image/png') {
                             // 对于PNG，我们将元数据添加到文件名中
-                            newFileName = `SM-F9460_samsung_${formatDateForFileName(randomDate)}_ISO${isoValue}_${focalLength}mm_f${fNumber}_${file.name}`;
+                            newFileName = SM-F9460_samsung_${formatDateForFileName(randomDate)}_ISO${isoValue}_${focalLength}mm_f${fNumber}_${file.name};
                         } else {
                             throw new Error('不支持的文件类型');
                         }
@@ -209,7 +206,7 @@
             const HH = String(date.getHours()).padStart(2, '0');
             const mm = String(date.getMinutes()).padStart(2, '0');
             const ss = String(date.getSeconds()).padStart(2, '0');
-            return `${yyyy}:${MM}:${dd} ${HH}:${mm}:${ss}`;
+            return ${yyyy}:${MM}:${dd} ${HH}:${mm}:${ss};
         }
 
         function formatDateForFileName(date) {
@@ -219,7 +216,7 @@
             const HH = String(date.getHours()).padStart(2, '0');
             const mm = String(date.getMinutes()).padStart(2, '0');
             const ss = String(date.getSeconds()).padStart(2, '0');
-            return `${yyyy}${MM}${dd}_${HH}${mm}${ss}`;
+            return ${yyyy}${MM}${dd}_${HH}${mm}${ss};
         }
     </script>
 </body>
