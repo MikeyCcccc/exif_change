@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch EXIF Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        #status, #result {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Batch EXIF Editor</h1>
+    <div id="status">选择的文件数: 0</div>
+    <div id="result">状态: 等待选择文件</div>
+    <input type="file" id="fileInput" multiple accept="image/jpeg,image/png" style="display: none;">
+    <button onclick="document.getElementById('fileInput').click()">选择照片</button>
+    <button onclick="processImages()">处理</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.js"></script>
+    <script>
+        let selectedFiles = [];
+
+        document.getElementById('fileInput').addEventListener('change', (event) => {
+            selectedFiles = Array.from(event.target.files);
+            document.getElementById('status').textContent = `选择的文件数: ${selectedFiles.length}`;
+        });
+
+        function processImages() {
+            if (selectedFiles.length === 0) {
+                alert('请先选择图片。');
+                return;
+            }
+
+            document.getElementById('result').textContent = '状态：正在处理...';
+
+            let processed = 0;
+            let failed = 0;
+
+            selectedFiles.forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const fileType = file.type;
+                        let newFileName = '';
+                        let newFileContent = e.target.result;
+
+                        // 生成随机数据
+                        const now = new Date();
+                        const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+                        const randomDate = new Date(twoDaysAgo.getTime() + Math.random() * (now.getTime() - twoDaysAgo.getTime()));
+                        const isoValue = Math.floor(Math.random() * 19) * 25 + 50;
+                        const exposureTime = (Math.floor(Math.random() * 231) + 125) / 10000;
+
+                        if (fileType === 'image/jpeg') {
+                            let exifObj = piexif.load(e.target.result);
+
+                            // 修改EXIF数据
+                            exifObj["0th"][piexif.ImageIFD.Model] = "SM-F9460";
+                            exifObj["0th"][piexif.ImageIFD.Make] = "samsung";
+                            exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal] = randomDate.toISOString().replace(/[-T:]/g, ':').split('.')[0];
+                            exifObj["Exif"][piexif.ExifIFD.ApertureValue] = [24, 10];
+                            exifObj["Exif"][piexif.ExifIFD.ISOSpeedRatings] = isoValue;
+                            exifObj["Exif"][piexif.ExifIFD.ExposureTime] = [exposureTime * 10000, 10000];
+
+                            // 将修改后的EXIF数据写回图像
+                            const exifBytes = piexif.dump(exifObj);
+                            newFileContent = piexif.insert(exifBytes, e.target.result);
+                            newFileName = `modified_${file.name}`;
+                        } else if (fileType === 'image/png') {
+                            // 对于PNG，我们将元数据添加到文件名中
+                            newFileName = `SM-F9460_samsung_${randomDate.toISOString().replace(/[-:]/g, '').split('T')[0]}_ISO${isoValue}_${file.name}`;
+                        }
+
+                        // 创建下载链接
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = newFileContent;
+                        downloadLink.download = newFileName;
+                        downloadLink.click();
+
+                        processed++;
+                    } catch (error) {
+                        console.error('处理文件时出错:', error);
+                        failed++;
+                    }
+
+                    if (processed + failed === selectedFiles.length) {
+                        document.getElementById('result').textContent = `状态：完成。成功处理: ${processed}, 失败: ${failed}`;
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>
