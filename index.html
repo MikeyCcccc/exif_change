@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Batch EXIF Editor</title>
+    <title>批量 EXIF 编辑器</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,7 +21,7 @@
     </style>
 </head>
 <body>
-    <h1>Batch EXIF Editor</h1>
+    <h1>批量 EXIF 编辑器</h1>
     <div id="status">选择的文件数: 0</div>
     <div id="result">状态: 等待选择文件</div>
     <div id="progress"></div>
@@ -56,7 +56,7 @@
             const zip = new JSZip();
             const batchSize = 10; // 每批处理的文件数
 
-            // 生成不重复的随机时间数组
+            // 生成不重复的随机时间数组并打乱顺序
             const uniqueDates = generateUniqueRandomDates(selectedFiles.length);
 
             for (let i = 0; i < selectedFiles.length; i += batchSize) {
@@ -113,21 +113,35 @@
             const now = new Date();
             const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
 
-            const totalMillisecondsInPast24Hours = now.getTime() - past24Hours.getTime();
-
             const usedTimes = new Set();
 
             while (dates.length < count) {
-                const randomTimeOffset = Math.floor(Math.random() * totalMillisecondsInPast24Hours);
-                const randomTime = past24Hours.getTime() + randomTimeOffset;
-                if (randomTime <= now.getTime() && !usedTimes.has(randomTime)) {
-                    usedTimes.add(randomTime);
-                    const randomDate = new Date(randomTime);
-                    dates.push(randomDate);
+                const randomTime = randomDateInRange(past24Hours, now);
+                const timeKey = randomTime.getTime();
+                if (!usedTimes.has(timeKey)) {
+                    usedTimes.add(timeKey);
+                    dates.push(randomTime);
                 }
             }
 
+            // 打乱日期数组顺序
+            shuffleArray(dates);
+
             return dates;
+        }
+
+        function randomDateInRange(start, end) {
+            const startMs = start.getTime();
+            const endMs = end.getTime();
+            const randomMs = startMs + Math.random() * (endMs - startMs);
+            return new Date(randomMs);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
         }
 
         function processImage(file, randomDate) {
