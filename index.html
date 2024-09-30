@@ -3,20 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <title>批量 EXIF 编辑器</title>
+    <!-- 添加 viewport 元标签 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            /* 移除 max-width，让页面在移动设备上自动铺满 */
             margin: 0 auto;
             padding: 20px;
+            /* 添加响应式设计 */
+            box-sizing: border-box;
         }
         button {
             padding: 10px 20px;
             font-size: 16px;
             margin-right: 10px;
+            margin-bottom: 10px; /* 在移动设备上增加按钮之间的间距 */
         }
         #status, #result, #progress, #downloadLink {
             margin-bottom: 20px;
+            word-wrap: break-word; /* 防止长文本溢出 */
         }
     </style>
 </head>
@@ -154,10 +160,12 @@
                         let newFileContent = e.target.result;
 
                         const isoValue = Math.floor(Math.random() * 19) * 25 + 50;
+
+                        // 曝光时间数组，确保不超过0.125秒（即1/8秒）
                         const exposureTimes = [
                             [1, 8000], [1, 4000], [1, 2000], [1, 1000], [1, 500],
                             [1, 250], [1, 125], [1, 60], [1, 30], [1, 15],
-                            [1, 8], [1, 4], [1, 2], [1, 1], [2, 1]
+                            [1, 8]
                         ];
                         const exposureTime = exposureTimes[Math.floor(Math.random() * exposureTimes.length)];
 
