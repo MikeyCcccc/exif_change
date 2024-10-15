@@ -8,21 +8,19 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            /* 移除 max-width，让页面在移动设备上自动铺满 */
             margin: 0 auto;
             padding: 20px;
-            /* 添加响应式设计 */
             box-sizing: border-box;
         }
         button {
             padding: 10px 20px;
             font-size: 16px;
             margin-right: 10px;
-            margin-bottom: 10px; /* 在移动设备上增加按钮之间的间距 */
+            margin-bottom: 10px;
         }
         #status, #result, #progress, #downloadLink {
             margin-bottom: 20px;
-            word-wrap: break-word; /* 防止长文本溢出 */
+            word-wrap: break-word;
         }
     </style>
 </head>
@@ -117,13 +115,12 @@
         function generateUniqueRandomDates(count) {
             const dates = [];
             const now = new Date();
-            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0); // 当天早上7点
-            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 30, 0); // 当天下午5点30分
+            const past4Days = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000); // 4天前
 
             const usedTimes = new Set();
 
             while (dates.length < count) {
-                const randomTime = randomDateInRange(startOfDay, endOfDay);
+                const randomTime = randomDateInRange(past4Days, now);
                 const timeKey = randomTime.getTime();
                 if (!usedTimes.has(timeKey)) {
                     usedTimes.add(timeKey);
@@ -138,10 +135,32 @@
         }
 
         function randomDateInRange(start, end) {
+            // 随机选择一天的日期
             const startMs = start.getTime();
             const endMs = end.getTime();
-            const randomMs = startMs + Math.random() * (endMs - startMs);
-            return new Date(randomMs);
+            const randomDayMs = startMs + Math.random() * (endMs - startMs);
+            const randomDay = new Date(randomDayMs);
+
+            // 设置随机时间在当天的 7:00 到 17:30 之间
+            const startHour = 7;
+            const endHour = 17;
+            const startMinute = 0;
+            const endMinute = 30;
+
+            const randomHour = startHour + Math.floor(Math.random() * (endHour - startHour + 1));
+            let randomMinute;
+            if (randomHour === endHour) {
+                // 如果是下午 17 点，则分钟数不能超过 30
+                randomMinute = Math.floor(Math.random() * (endMinute + 1));
+            } else {
+                randomMinute = Math.floor(Math.random() * 60);
+            }
+
+            randomDay.setHours(randomHour);
+            randomDay.setMinutes(randomMinute);
+            randomDay.setSeconds(Math.floor(Math.random() * 60)); // 随机设置秒数
+
+            return randomDay;
         }
 
         function shuffleArray(array) {
@@ -230,3 +249,12 @@
         function formatDateForFileName(date) {
             const yyyy = date.getFullYear();
             const MM = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const HH = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            const ss = String(date.getSeconds()).padStart(2, '0');
+            return `${yyyy}${MM}${dd}_${HH}${mm}${ss}`;
+        }
+    </script>
+</body>
+</html>
