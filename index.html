@@ -147,7 +147,11 @@
             const startMinute = 0;
             const endMinute = 30;
 
-            const randomHour = startHour + Math.floor(Math.random() * (endHour - startHour + 1));
+            let randomHour = startHour + Math.floor(Math.random() * (endHour - startHour + 1));
+            if (randomHour < startHour || randomHour > endHour) {
+                randomHour = startHour; // 确保时间在 7 点到 17 点之间
+            }
+
             let randomMinute;
             if (randomHour === endHour) {
                 // 如果是下午 17 点，则分钟数不能超过 30
