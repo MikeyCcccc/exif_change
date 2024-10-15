@@ -62,7 +62,7 @@
             const zip = new JSZip();
             const batchSize = 10; // 每批处理的文件数
 
-            // 生成不重复的随机时间数组并打乱顺序
+            // 生成不重复的随机时间数组并打亂顺序
             const uniqueDates = generateUniqueRandomDates(selectedFiles.length);
 
             for (let i = 0; i < selectedFiles.length; i += batchSize) {
@@ -110,19 +110,24 @@
         }
 
         function updateProgress(processed, failed, total) {
-            const progress = ((processed + failed) / total * 100).toFixed(2);
+            const progress = (((processed + failed) / total) * 100).toFixed(2);
             document.getElementById('progress').textContent = `进度: ${progress}% (成功: ${processed}, 失败: ${failed})`;
         }
 
         function generateUniqueRandomDates(count) {
             const dates = [];
             const now = new Date();
-            const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
+            const past72Hours = new Date(now.getTime() - 72 * 60 * 60 * 1000); // 72小时前
+            const startHour = 7 * 60 * 60 * 1000 + 30 * 60 * 1000; // 早上7点30
+            const endHour = 17 * 60 * 60 * 1000 + 30 * 60 * 1000; // 下午17点30 // 24小时前
 
             const usedTimes = new Set();
 
             while (dates.length < count) {
-                const randomTime = randomDateInRange(past24Hours, now);
+                let randomTime;
+                do {
+                    randomTime = randomDateInRange(past72Hours, now);
+                } while (randomTime.getHours() * 60 * 60 * 1000 + randomTime.getMinutes() * 60 * 1000 < startHour || randomTime.getHours() * 60 * 60 * 1000 + randomTime.getMinutes() * 60 * 1000 > endHour);
                 const timeKey = randomTime.getTime();
                 if (!usedTimes.has(timeKey)) {
                     usedTimes.add(timeKey);
@@ -130,7 +135,7 @@
                 }
             }
 
-            // 打乱日期数组顺序
+            // 打亂日期数组顺序
             shuffleArray(dates);
 
             return dates;
