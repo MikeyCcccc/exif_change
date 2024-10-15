@@ -117,12 +117,13 @@
         function generateUniqueRandomDates(count) {
             const dates = [];
             const now = new Date();
-            const past24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24小时前
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0); // 当天早上7点
+            const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 30, 0); // 当天下午5点30分
 
             const usedTimes = new Set();
 
             while (dates.length < count) {
-                const randomTime = randomDateInRange(past24Hours, now);
+                const randomTime = randomDateInRange(startOfDay, endOfDay);
                 const timeKey = randomTime.getTime();
                 if (!usedTimes.has(timeKey)) {
                     usedTimes.add(timeKey);
@@ -229,12 +230,3 @@
         function formatDateForFileName(date) {
             const yyyy = date.getFullYear();
             const MM = String(date.getMonth() + 1).padStart(2, '0');
-            const dd = String(date.getDate()).padStart(2, '0');
-            const HH = String(date.getHours()).padStart(2, '0');
-            const mm = String(date.getMinutes()).padStart(2, '0');
-            const ss = String(date.getSeconds()).padStart(2, '0');
-            return `${yyyy}${MM}${dd}_${HH}${mm}${ss}`;
-        }
-    </script>
-</body>
-</html>
