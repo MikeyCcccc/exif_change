@@ -141,20 +141,11 @@
             const randomDayMs = startMs + Math.random() * (endMs - startMs);
             const randomDay = new Date(randomDayMs);
 
-            // 设置随机时间在当天的 7:00 到 17:30 之间
+            // 强制设置随机时间在当天的 7:00 到 17:30 之间
             const startHour = 7;
             const endHour = 17;
-            const startMinute = 0;
-            const endMinute = 30;
-
-            let randomHour = startHour + Math.floor(Math.random() * (endHour - startHour + 1));
-            let randomMinute;
-            if (randomHour === endHour) {
-                // 如果是下午 17 点，则分钟数不能超过 30
-                randomMinute = Math.floor(Math.random() * (endMinute + 1));
-            } else {
-                randomMinute = Math.floor(Math.random() * 60);
-            }
+            const randomHour = startHour + Math.floor(Math.random() * (endHour - startHour + 1));
+            const randomMinute = randomHour === endHour ? Math.floor(Math.random() * 31) : Math.floor(Math.random() * 60);
 
             randomDay.setHours(randomHour);
             randomDay.setMinutes(randomMinute);
